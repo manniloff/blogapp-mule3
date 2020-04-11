@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<mule-project xmlns="http://www.mulesoft.com/tooling/project" runtimeId="org.mule.tooling.server.3.9.4.ee" schemaVersion="5.3.0.0">
+    <name>blogapp-mule3</name>
+    <description></description>
+    <muleExtension name="DB Server" qualifier="org.mule.tooling.ui.contribution.dbserver.3.4.0"/>
+</mule-project>

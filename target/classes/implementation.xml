@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dbserver="http://www.mulesoft.org/schema/mule/dbserver" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/dbserver http://www.mulesoft.org/schema/mule/dbserver/current/mule-dbserver.xsd">
+	<db:mysql-config name="MySQL_Configuration" host="${db.host}" port="${db.port}" user="${db.user}" password="${db.password}" database="${db.database}" doc:name="MySQL Configuration"/>
+	<dbserver:config name="DB_Server" database="blog" sqlFile="blog.sql" connectionStringParameters="MODE=MySQL" doc:name="DB Server"/>
+
+	<flow name="getUsersFlow">
+		<db:select config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[SELECT *
+FROM user]]></db:parameterized-query>
+
+		</db:select>
+		<dw:transform-message doc:name="Transform Message">
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	id: payload01.id,
+	login: payload01.login,
+	password: payload01.password,
+	active: payload01.active,
+	roles: payload01.role
+})]]></dw:set-payload>
+		</dw:transform-message>
+	</flow>
+	<flow name="getUsersByIdFlow">
+		<db:select config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Select * 
+From user
+Where id = #[flowVars.id];]]></db:parameterized-query>
+
+		</db:select>
+		<dw:transform-message doc:name="Transform Message" >
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	id: payload01.id,
+	login: payload01.login,
+	password: payload01.password,
+	active: payload01.active,
+	roles: payload01.role
+})]]></dw:set-payload>
+		</dw:transform-message>
+	</flow>
+	<flow name="deleteUsersFlow">
+		<db:delete config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Delete from user where id = #[flowVars.id]]]></db:parameterized-query>
+		</db:delete>
+
+		<set-payload value="User with id - #[flowVars.id] was deleted!" doc:name="Set Payload"/>
+	</flow>
+	<flow name="postUsersFlow">
+		<db:insert config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Insert into user (login, password, active, role)
+values (#[json:login],#[json:password], true,'USER')]]></db:parameterized-query>
+		</db:insert>
+		<set-payload value="User #[json:login],was added" doc:name="Set Payload"/>
+
+	</flow>
+	<flow name="putUserFlow">
+		<db:insert config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[update user set login = #[json:login] and passwod = #[json:password]
+where id = (select id from user where login = #[json:login])]]></db:parameterized-query>
+		</db:insert>
+		<set-payload value="User was updated" doc:name="Set Payload"/>
+	</flow>
+	<flow name="getPostsFlow">
+		<db:select config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Select p.*,c.id as comment_id, c.posted_date,c.text
+From 5p0mOyk8Fu.post p , 5p0mOyk8Fu.comment c 
+Where p.id = c.post_id]]></db:parameterized-query>
+		</db:select>
+
+		<dw:transform-message doc:name="Transform Message">
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	id: payload01.id,
+	title: payload01.title,
+	body: payload01.body,
+	createDate: payload01.create_date as :string,
+	updateDate: (payload01.update_date as :string) when payload01.update_date == "" otherwise null,
+	user: {
+		id: payload01.user_id
+	},
+	comments: [{
+		id: payload01.comment_id,
+		text: payload01.text,
+		postedDate: payload01.posted_date as :string,
+		user: {
+			id: payload01.user_id
+		}
+	}]
+})]]></dw:set-payload>
+		</dw:transform-message>
+	</flow>
+	<flow name="getPostsByIdFlow">
+		<db:select config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Select p.*,c.id as comment_id, c.posted_date,c.text
+From 5p0mOyk8Fu.post p , 5p0mOyk8Fu.comment c 
+Where p.id = c.post_id and p.id = #[flowVars.id];]]></db:parameterized-query>
+		</db:select>
+
+		<dw:transform-message doc:name="Transform Message">
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	id: payload01.id,
+	title: payload01.title,
+	body: payload01.body,
+	createDate: payload01.create_date as :string,
+	updateDate: (payload01.update_date as :string) when payload01.update_date == "" otherwise null,
+	user: {
+		id: payload01.user_id
+	},
+	comments: [{
+		id: payload01.comment_id,
+		text: payload01.text,
+		postedDate: payload01.posted_date as :string,
+		user: {
+			id: payload01.user_id
+		}
+	}]
+})]]></dw:set-payload>
+		</dw:transform-message>
+
+	</flow>
+	<flow name="getCommentsFlow">
+		<db:select config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Select *
+From comment;]]></db:parameterized-query>
+
+		</db:select>
+		<dw:transform-message doc:name="Transform Message">
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	id: payload01.id,
+	text: payload01.text,
+	postedDate: payload01.posted_date as :string,
+	postId: payload01.post_id,
+	userId: payload01.user_id
+})]]></dw:set-payload>
+		</dw:transform-message>
+
+	</flow>
+	<flow name="getCommentsByIdFlow">
+		<db:select config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Select *
+from comment
+Where id = #[flowVars.id]]]></db:parameterized-query>
+
+
+		</db:select>
+		<dw:transform-message doc:name="Transform Message">
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	id: payload.id,
+	text: payload.text,
+	postedDate: payload.posted_date as :string,
+	postId: payload.post_id,
+	userId: payload.user_id
+}]]></dw:set-payload>
+		</dw:transform-message>
+
+	</flow>
+	<flow name="getCategoriesFlow">
+		<db:select config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Select *
+From category]]></db:parameterized-query>
+
+
+		</db:select>
+		<dw:transform-message doc:name="Transform Message">
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	id: payload01.id,
+	name: payload01.name
+})]]></dw:set-payload>
+		</dw:transform-message>
+
+	</flow>
+	<flow name="getCategoriesByIdFlow">
+		<db:select config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Select *
+From category
+Where id = #[flowVars.id] ;]]></db:parameterized-query>
+
+		</db:select>
+		<dw:transform-message doc:name="Transform Message" >
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	id: payload01.id,
+	name: payload01.name
+})]]></dw:set-payload>
+		</dw:transform-message>
+
+	</flow>
+	<flow name="postCategoriesFlow">
+		<db:insert config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Insert into category (name) values (#[json:name])]]></db:parameterized-query>
+		</db:insert>
+
+		<set-payload value="Category #[json:name], was added;" doc:name="Set Payload"/>
+	</flow>
+	<flow name="deleteCategoriesByIdFlow">
+		<db:delete config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Delete from category where id = #[flowVars.id]]]></db:parameterized-query>
+
+		</db:delete>
+		<set-payload value="Catigory with id - #[flowVars.id]" doc:name="Set Payload"/>
+	</flow>
+
+	<flow name="postPostFlow">
+		<db:insert config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Insert into post (title, body, create_date, categories_id, user_id)
+values (#[json:title], #[json:title], timestamp, #[json:categoties_id], #[json:user_id])]]></db:parameterized-query>
+		</db:insert>
+
+		<set-payload value="Post with title - #[json:title],  was posted" doc:name="Set Payload"/>
+	</flow>
+	<flow name="deletePostByIdFlow">
+		<db:delete config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Delete from post where id = #[flowVars.id]]]></db:parameterized-query>
+
+		</db:delete>
+		<set-payload value="Post with id - #[flowVars.id], was deleted" doc:name="Set Payload"/>
+	</flow>
+
+	<flow name="deleteCommentByIdFlow">
+		<db:delete config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Delete from comments where id = #[flowVars.id]]]></db:parameterized-query>
+
+		</db:delete>
+		<set-payload value="Comment with id - #[flowVars.id], was deleted;" doc:name="Set Payload"/>
+	</flow>
+	<flow name="postCommentFlow">
+		<db:select config-ref="MySQL_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[Insert into comment (post_id, posted_date, text, user_id)
+values (#[json:postId], timestamp, #[json:text], #[json:user_id])]]></db:parameterized-query>
+		</db:select>
+
+		<set-payload value="Comment was added" doc:name="Set Payload"/>
+	</flow>
+</mule>

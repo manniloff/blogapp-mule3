@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dbserver="http://www.mulesoft.org/schema/mule/dbserver" xmlns:mock="http://www.mulesoft.org/schema/mule/mock" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/mock http://www.mulesoft.org/schema/mule/mock/current/mule-mock.xsd
+http://www.mulesoft.org/schema/mule/dbserver http://www.mulesoft.org/schema/mule/dbserver/current/mule-dbserver.xsd">
+    <munit:config name="munit" doc:name="MUnit configuration" mock-connectors="false" mock-inbounds="false"/>
+    <spring:beans>
+        <spring:import resource="classpath:implementation.xml"/>
+    </spring:beans>
+	<dbserver:config name="DB_Server1" database="blog" sqlFile="blog.sql" connectionStringParameters="MODE=MySQL" doc:name="DB Server"/>
+	<munit:before-suite name="implementation-test-suiteBefore_Suite" description="MUnit Test">
+		<dbserver:start-db-server config-ref="DB_Server1" doc:name="DB Server"/>
+	</munit:before-suite>
+    <munit:test name="implementation-test-suite-getUsersFlowTest" description="Test">
+        <flow-ref name="getUsersFlow" doc:name="Flow-ref to getUsersFlow"/>
+		<munit:assert-on-equals expectedValue="#[]" actualValue="#[]" doc:name="Assert Equals"/>
+    </munit:test>
+</mule>
